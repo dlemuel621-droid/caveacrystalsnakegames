@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Snake Eater – Ultra Quest Edition</title>
+  <style>
+    body {
+      background: #050509;
+      color: #f0f0f0;
+      font-family: system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    h1 {
+      margin: 10px 0 5px;
+      letter-spacing: 1px;
+    }
+    #gameContainer {
+      position: relative;
+      margin-top: 10px;
+    }
+    canvas {
+      background: #111;
+      border: 2px solid #444;
+      box-shadow: 0 0 20px rgba(0,0,0,0.7);
+      image-rendering: pixelated;
+    }
+    #hud {
+      margin-top: 10px;
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .label {
+      font-size: 14px;
+      color: #ccc;
+    }
+    select, button {
+      background: #181818;
+      color: #f0f0f0;
+      border: 1px solid #555;
+      border-radius: 6px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:hover {
+      background: #222;
+    }
+    #message {
+      margin-top: 8px;
+      font-size: 14px;
+      color: #aaa;
+      text-align: center;
+      max-width: 900px;
+    }
+    #overlayText {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      text-align: center;
+      color: #fff;
+      font-size: 28px;
+      text-shadow: 0 0 8px #000;
+    }
+    #overlayText small {
+      font-size: 16px;
+      margin-top: 10px;
+      color: #ddd;
+    }
+    #statusBar {
+      margin-top: 6px;
+      font-size: 13px;
+      color: #bbb;
+    }
+    /* Main menu + shop + quests popup */
+    #mainMenu {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.95);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      text-align: center;
+      overflow-y: auto;
+      padding: 20px;
+    }
+    #mainMenu h2 {
+      margin-bottom: 10px;
+    }
+    #mainMenu .menu-row {
+      margin: 6px 0;
+    }
+    #shop, #questsBox {
+      margin-top: 14px;
+      padding: 10px 16px;
+      border-radius: 10px;
+      background: #111;
+      border: 1px solid #444;
+      max-width: 650px;
+    }
+    #shop h3, #questsBox h3 {
+      margin-top: 0;
+      margin-bottom: 6px;
+    }
+    .shop-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 4px 0;
+      gap: 8px;
+      font-size: 13px;
+    }
+    .shop-item span {
+      text-align: left;
+      flex: 1;
+    }
+    .shop-cost {
+      color: #ffd454;
+      white-space: nowrap;
+      margin-right: 4px;
+    }
+    #questList {
+      text-align: left;
+      font-size: 13px;
+      margin: 0;
+      padding-left: 18px;
+    }
+    #questList li {
+      margin: 3px 0;
+    }
+    .quest-done {
+      color: #7cff7c;
+    }
+    .quest-progress {
+      color: #fffc9b;
+    }
+  </style>
+</head>
+<body>
+  <h1>Snake Eater – Ultra Quest Edition</h1>
+  <div class="label">
+    P1: W A S D · P2: Arrow Keys (Co-op) · Space/Start = Play ·
+    Q = Ghost · R = Slow Time · E = Shockwave · F = Teleport · C = Magnet · Z = Freeze Hunters
+  </div>
+
+  <!-- Popup Menu + Shop + Quests -->
+  <div id="mainMenu">
+    <h2>Snake Eater – Main Menu</h2>
+    <div class="menu-row">
+      <span class="label">Title: <span id="menuTitle">Baby Snake</span></span>
+    </div>
+    <div class="menu-row">
+      <span class="label">Level: <span id="menuLevel">1</span> · XP: <span id="menuXP">0</span>/<span id="menuXPNext">20</span></span>
+    </div>
+    <div class="menu-row">
+      <span class="label">Snakebucks: <span id="menuSnakebucks">0</span></span>
+    </div>
+    <div class="menu-row">
+      <span class="label">Skin (Player 1): </span>
+      <select id="menuSkinSelect">
+        <option value="classic">Classic</option>
+        <option value="neon">Neon</option>
+        <option value="fire">Fire</option>
+        <option value="ocean">Ocean</option>
+      </select>
+    </div>
+    <div class="menu-row">
+      <span class="label">Game Mode: </span>
+      <select id="menuModeSelect">
+        <option value="classic">Classic</option>
+        <option value="wrap">Warp</option>
+        <option value="hardcore">Hardcore</option>
+        <option value="chaos">Chaos</option>
+        <option value="ally">Ally Mode</option>
+        <option value="coop">Co-op Mode</option>
+        <option value="infection">Infection</option>
+        <option value="timeattack">Time Attack</option>
+        <option value="arena">Arena</option>
+        <option value="waves">Endless Waves</option>
+      </select>
+    </div>
+
+    <div id="shop">
+      <h3>Snake Shop</h3>
+      <div class="label">
+        Earn 1 Snakebuck every 5 score. Higher levels unlock free passives automatically.<br>
+        Some upgrades can be bought OR unlocked by reaching certain levels.
+      </div>
+      <div class="shop-item">
+        <span><b>Longer Ghost</b> – Ghost ability lasts longer. (Free at Lv 5)</span>
+        <span class="shop-cost">Cost: 15 SB</span>
+        <button data-upgrade="ghost">Buy</button>
+      </div>
+      <div class="shop-item">
+        <span><b>Slow Time+</b> – Slow Time lasts longer. (Free at Lv 7)</span>
+        <span class="shop-cost">Cost: 15 SB</span>
+        <button data-upgrade="slow">Buy</button>
+      </div>
+      <div class="shop-item">
+        <span><b>Shockwave+</b> – Shockwave cooldown is shorter. (Free at Lv 9)</span>
+        <span class="shop-cost">Cost: 20 SB</span>
+        <button data-upgrade="shock">Buy</button>
+      </div>
+      <div class="shop-item">
+        <span><b>Passive Income</b> – Gain Snakebucks slowly over time. (Free at Lv 4)</span>
+        <span class="shop-cost">Cost: 25 SB</span>
+        <button data-upgrade="passive">Buy</button>
+      </div>
+      <div class="shop-item">
+        <span><b>Ally+</b> – Stronger ally snake AI. (Free at Lv 6)</span>
+        <span class="shop-cost">Cost: 20 SB</span>
+        <button data-upgrade="ally">Buy</button>
+      </div>
+      <div class="shop-item">
+        <span><b>Big Food</b> – Food gives more score. (Free at Lv 3)</span>
+        <span class="shop-cost">Cost: 15 SB</span>
+        <button data-upgrade="bigfood">Buy</button>
+      </div>
+      <div class="shop-item">
+        <span><b>Revive Token</b> – One extra life per run. (Free at Lv 10)</span>
+        <span class="shop-cost">Cost: 40 SB</span>
+        <button data-upgrade="revive">Buy</button>
+      </div>
+      <div class="label" id="shopMessage" style="margin-top:6px; min-height:18px;"></div>
+    </div>
+
+    <div id="questsBox">
+      <h3>Quests</h3>
+      <div class="label">
+        Complete quests to earn Snakebucks and XP. (Quests stay completed once you finish them.)
+      </div>
+      <ul id="questList"></ul>
+    </div>
+
+    <div class="menu-row">
+      <button id="menuStartBtn">Start Game</button>
+    </div>
+    <div class="menu-row" style="max-width:650px;">
+      <span class="label">
+        Level up to unlock free passives, then use the shop to fill in the gaps. Different modes change difficulty and style.
+      </span>
+    </div>
+  </div>
+
+  <div id="gameContainer">
+    <canvas id="game" width="600" height="600"></canvas>
+    <div id="overlayText" style="display:none;">
+      <div id="overlayMain"></div>
+      <small id="overlaySub"></small>
+    </div>
+  </div>
+
+  <div id="hud">
+    <div class="label">Title: <span id="hudTitle">Baby Snake</span></div>
+    <div class="label">Level: <span id="hudLevel">1</span></div>
+    <div class="label">XP: <span id="hudXP">0</span>/<span id="hudXPNext">20</span></div>
+    <div class="label">Score: <span id="score">0</span></div>
+    <div class="label">Best: <span id="best">0</span></div>
+    <div class="label">Snakebucks: <span id="hudSnakebucks">0</span></div>
+
+    <div class="label">
+      Skin (P1):
+      <select id="skinSelect">
+        <option value="classic">Classic</option>
+        <option value="neon">Neon</option>
+        <option value="fire">Fire</option>
+        <option value="ocean">Ocean</option>
+      </select>
+    </div>
+
+    <div class="label">
+      Mode:
+      <select id="modeSelect">
+        <option value="classic">Classic</option>
+        <option value="wrap">Warp</option>
+        <option value="hardcore">Hardcore</option>
+        <option value="chaos">Chaos</option>
+        <option value="ally">Ally Mode</option>
+        <option value="coop">Co-op Mode</option>
+        <option value="infection">Infection</option>
+        <option value="timeattack">Time Attack</option>
+        <option value="arena">Arena</option>
+        <option value="waves">Endless Waves</option>
+      </select>
+    </div>
+
+    <button id="startBtn">Start / Restart</button>
+  </div>
+
+  <div id="statusBar"></div>
+
+  <div id="message">
+    Level up by playing: foods give XP and Snakebucks. Higher levels unlock free passives (longer abilities, shorter cooldowns, passive income, free revive, etc).<br>
+    Quests give big chunks of Snakebucks + XP when completed. Try different modes and see which combos feel broken in a fun way 😈
+  </div>
+
+  <script>
+    // ====== BASIC CONFIG ======
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+
+    const CELL_SIZE = 20;
+    const COLS = canvas.width / CELL_SIZE;
+    const ROWS = canvas.height / CELL_SIZE;
+
+    let snake1 = [];
+    let dir1 = { x: 1, y: 0 };
+    let nextDir1 = { x: 1, y: 0 };
+
+    let snake2 = [];
+    let dir2 = { x: 0, y: 0 };
+    let nextDir2 = { x: 0, y: 0 };
+
+    let allySnake = [];
+    let petSnake = [];
+    let decoySnake = [];
+    let hunters = [];
+    let enemySnakes = [];
+    let obstacles = [];
+    let food = null;
+
+    let boss = null; // {x,y,width,dx}
+
+    let score = 0;
+    let best = 0;
+    let snakebucks = 0;
+
+    let playerLevel = 1;
+    let playerXP = 0;
+    let totalFoodEaten = 0;
+    let timeSurvivedTicks = 0;
+
+    let gameOver = false;
+    let running = false;
+    let loopId = null;
+    const baseTick = 90;
+    let baseDelay = baseTick;
+
+    let slowTimeTicks = 0;
+    let ghostTicks = 0;
+    let magnetTicks = 0;
+    let freezeTicks = 0;
+
+    let shockwaveCd = 0;
+    let ghostCd = 0;
+    let slowCd = 0;
+    let teleportCd = 0;
+    let magnetCd = 0;
+    let freezeCd = 0;
+
+    let infectionTicks = 0;
+    let isInfected = false;
+
+    let hunterMoveCounter = 0;
+    const HUNTER_MOVE_EVERY = 4; // slower hunters
+
+    const bossThresholds = [15, 30, 50];
+    let nextBossIndex = 0;
+
+    let waveNumber = 1;
+    let timeAttackTicks = 0;
+
+    let passiveIncomeCounter = 0;
+
+    // ====== QUESTS ======
+    const QUESTS = [
+      { id: 'score10',  desc: 'Reach score 10 in any mode',      type: 'score', target: 10,  rewardSB: 5, rewardXP: 20 },
+      { id: 'score30',  desc: 'Reach score 30 in any mode',      type: 'score', target: 30,  rewardSB: 10, rewardXP: 40 },
+      { id: 'food25',   desc: 'Eat 25 foods total (all runs)',   type: 'foodTotal', target: 25, rewardSB: 8, rewardXP: 30 },
+      { id: 'food75',   desc: 'Eat 75 foods total (all runs)',   type: 'foodTotal', target: 75, rewardSB: 15, rewardXP: 60 },
+      { id: 'time60',   desc: 'Survive 60 seconds in one run',   type: 'time', target: 60,  rewardSB: 10, rewardXP: 40 },
+      { id: 'waves3',   desc: 'Reach Wave 3 in Endless Waves',   type: 'wave', target: 3,   rewardSB: 10, rewardXP: 40 }
+    ];
+    let questState = {}; // id -> {done:bool}
+
+    // ====== SKINS ======
+    const SKINS = {
+      classic: { head: '#ffff00', body: '#00aa00', bg: '#050509', grid: '#202020' },
+      neon:    { head: '#00ffff', body: '#ff00ff', bg: '#050515', grid: '#26263a' },
+      fire:    { head: '#ffb300', body: '#ff3300', bg: '#140606', grid: '#402020' },
+      ocean:   { head: '#3388ff', body: '#00cc88', bg: '#031018', grid: '#153040' },
+    };
+    let currentSkinId = 'classic';
+
+    // ====== MODES ======
+    const MODES = {
+      classic:    { name:'Classic',       wrap:false, speedMult:1,   hunters:0, allyAI:false, coop:false, infection:false, timeLimit:0,      arena:false, waves:false },
+      wrap:       { name:'Warp',          wrap:true,  speedMult:1,   hunters:0, allyAI:false, coop:false, infection:false, timeLimit:0,      arena:false, waves:false },
+      hardcore:   { name:'Hardcore',      wrap:false, speedMult:1.8, hunters:1, allyAI:false, coop:false, infection:false, timeLimit:0,      arena:false, waves:false },
+      chaos:      { name:'Chaos',         wrap:true,  speedMult:2,   hunters:3, allyAI:true,  coop:false, infection:false, timeLimit:0,      arena:false, waves:false },
+      ally:       { name:'Ally',          wrap:true,  speedMult:1.2, hunters:1, allyAI:true,  coop:false, infection:false, timeLimit:0,      arena:false, waves:false },
+      coop:       { name:'Co-op',         wrap:true,  speedMult:1.1, hunters:1, allyAI:false, coop:true,  infection:false, timeLimit:0,      arena:false, waves:false },
+      infection:  { name:'Infection',     wrap:true,  speedMult:1.2, hunters:2, allyAI:false, coop:false, infection:true,  timeLimit:0,      arena:false, waves:false },
+      timeattack: { name:'Time Attack',   wrap:true,  speedMult:1.3, hunters:1, allyAI:false, coop:false, infection:false, timeLimit:60*20,  arena:false, waves:false },
+      arena:      { name:'Arena',         wrap:false, speedMult:1.1, hunters:1, allyAI:false, coop:false, infection:false, timeLimit:0,      arena:true,  waves:false },
+      waves:      { name:'Endless Waves', wrap:true,  speedMult:1.2, hunters:1, allyAI:true,  coop:false, infection:false, timeLimit:0,      arena:false, waves:true }
+    };
+
+    let currentModeId = 'classic';
+    let mode = MODES[currentModeId];
+
+    // ====== UPGRADES / SHOP ======
+    const defaultUpgrades = {
+      ghostPlus: false,
+      slowPlus: false,
+      shockPlus: false,
+      passivePlus: false,
+      allyPlus: false,
+      bigfoodPlus: false,
+      reviveToken: false
+    };
+    let upgrades = { ...defaultUpgrades };
+    let reviveUsedThisRun = false;
+
+    // HUD + menu elements
+    const scoreSpan = document.getElementById('score');
+    const bestSpan = document.getElementById('best');
+    const hudSnakebucks = document.getElementById('hudSnakebucks');
+    const startBtn = document.getElementById('startBtn');
+    const skinSelect = document.getElementById('skinSelect');
+    const modeSelect = document.getElementById('modeSelect');
+    const overlay = document.getElementById('overlayText');
+    const overlayMain = document.getElementById('overlayMain');
+    const overlaySub = document.getElementById('overlaySub');
+    const statusBar = document.getElementById('statusBar');
+
+    const hudLevel = document.getElementById('hudLevel');
+    const hudXP = document.getElementById('hudXP');
+    const hudXPNext = document.getElementById('hudXPNext');
+    const hudTitle = document.getElementById('hudTitle');
+
+    const mainMenu = document.getElementById('mainMenu');
+    const menuSkinSelect = document.getElementById('menuSkinSelect');
+    const menuModeSelect = document.getElementById('menuModeSelect');
+    const menuStartBtn = document.getElementById('menuStartBtn');
+    const menuSnakebucks = document.getElementById('menuSnakebucks');
+    const menuLevel = document.getElementById('menuLevel');
+    const menuXP = document.getElementById('menuXP');
+    const menuXPNext = document.getElementById('menuXPNext');
+    const menuTitle = document.getElementById('menuTitle');
+    const shopMessage = document.getElementById('shopMessage');
+    const shopButtons = document.querySelectorAll('#shop button[data-upgrade]');
+    const questListEl = document.getElementById('questList');
+
+    // ====== LOAD SAVE DATA ======
+    try {
+      const savedBest = localStorage.getItem('snake_best_ultra_q');
+      if (savedBest !== null) {
+        best = parseInt(savedBest, 10) || 0;
+        bestSpan.textContent = best;
+      }
+      const savedBucks = localStorage.getItem('snake_snakebucks_ultra_q');
+      if (savedBucks !== null) {
+        snakebucks = parseInt(savedBucks, 10) || 0;
+      }
+      const savedUp = localStorage.getItem('snake_upgrades_ultra_q');
+      if (savedUp) {
+        const parsed = JSON.parse(savedUp);
+        upgrades = { ...defaultUpgrades, ...parsed };
+      }
+      const savedLvl = localStorage.getItem('snake_level_ultra_q');
+      if (savedLvl !== null) {
+        playerLevel = parseInt(savedLvl, 10) || 1;
+      }
+      const savedXP = localStorage.getItem('snake_xp_ultra_q');
+      if (savedXP !== null) {
+        playerXP = parseInt(savedXP, 10) || 0;
+      }
+      const savedFood = localStorage.getItem('snake_food_ultra_q');
+      if (savedFood !== null) {
+        totalFoodEaten = parseInt(savedFood, 10) || 0;
+      }
+      const savedQuests = localStorage.getItem('snake_quests_ultra_q');
+      if (savedQuests) {
+        questState = JSON.parse(savedQuests);
+      }
+    } catch (e) {
+      questState = {};
+    }
+
+    function xpForNextLevel(level) {
+      return 20 + (level - 1) * 10;
+    }
+
+    function getTitleForLevel(level) {
+      if (level >= 15) return 'Legendary Serpent';
+      if (level >= 10) return 'Boss Slayer';
+      if (level >= 7)  return 'Chaos Tamer';
+      if (level >= 4)  return 'Hunter Dodger';
+      return 'Baby Snake';
+    }
+
+    function updateLevelUI() {
+      const xpNext = xpForNextLevel(playerLevel);
+      hudLevel.textContent = playerLevel;
+      hudXP.textContent = playerXP;
+      hudXPNext.textContent = xpNext;
+      hudTitle.textContent = getTitleForLevel(playerLevel);
+
+      menuLevel.textContent = playerLevel;
+      menuXP.textContent = playerXP;
+      menuXPNext.textContent = xpNext;
+      menuTitle.textContent = getTitleForLevel(playerLevel);
+    }
+
+    function saveProgress() {
+      try {
+        localStorage.setItem('snake_best_ultra_q', String(best));
+        localStorage.setItem('snake_snakebucks_ultra_q', String(snakebucks));
+        localStorage.setItem('snake_upgrades_ultra_q', JSON.stringify(upgrades));
+        localStorage.setItem('snake_level_ultra_q', String(playerLevel));
+        localStorage.setItem('snake_xp_ultra_q', String(playerXP));
+        localStorage.setItem('snake_food_ultra_q', String(totalFoodEaten));
+        localStorage.setItem('snake_quests_ultra_q', JSON.stringify(questState));
+      } catch (e) {}
+    }
+
+    function updateSnakebucksUI() {
+      hudSnakebucks.textContent = snakebucks;
+      menuSnakebucks.textContent = snakebucks;
+    }
+
+    function updateShopButtonStates() {
+      shopButtons.forEach(btn => {
+        const type = btn.getAttribute('data-upgrade');
+        let owned = hasUpgradeKey(type);
+        if (owned) {
+          btn.textContent = 'Owned / Unlocked';
+          btn.disabled = true;
+        }
+      });
+    }
+
+    function hasUpgrade(key) {
+      // upgrade keys map to internal flag names
+      if (key === 'ghostPlus') return upgrades.ghostPlus || playerLevel >= 5;
+      if (key === 'slowPlus') return upgrades.slowPlus || playerLevel >= 7;
+      if (key === 'shockPlus') return upgrades.shockPlus || playerLevel >= 9;
+      if (key === 'passivePlus') return upgrades.passivePlus || playerLevel >= 4;
+      if (key === 'allyPlus') return upgrades.allyPlus || playerLevel >= 6;
+      if (key === 'bigfoodPlus') return upgrades.bigfoodPlus || playerLevel >= 3;
+      if (key === 'reviveToken') return upgrades.reviveToken || playerLevel >= 10;
+      return false;
+    }
+
+    function hasUpgradeKey(shopKey) {
+      if (shopKey === 'ghost') return hasUpgrade('ghostPlus');
+      if (shopKey === 'slow') return hasUpgrade('slowPlus');
+      if (shopKey === 'shock') return hasUpgrade('shockPlus');
+      if (shopKey === 'passive') return hasUpgrade('passivePlus');
+      if (shopKey === 'ally') return hasUpgrade('allyPlus');
+      if (shopKey === 'bigfood') return hasUpgrade('bigfoodPlus');
+      if (shopKey === 'revive') return hasUpgrade('reviveToken');
+      return false;
+    }
+
+    function addXP(amount) {
+      playerXP += amount;
+      let leveledUp = false;
+      while (playerXP >= xpForNextLevel(playerLevel)) {
+        playerXP -= xpForNextLevel(playerLevel);
+        playerLevel += 1;
+        leveledUp = true;
+      }
+      updateLevelUI();
+      if (leveledUp) {
+        shopMessage.textContent = 'Level up! New passives may be unlocked.';
+        updateShopButtonStates();
+      }
+      saveProgress();
+    }
+
+    function randInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function randCell() {
+      return { x: randInt(0, COLS - 1), y: randInt(0, ROWS - 1) };
+    }
+
+    function cellsEqual(a, b) {
+      return a && b && a.x === b.x && a.y === b.y;
+    }
+
+    function snakeContains(snake, cell) {
+      return snake.some(seg => seg.x === cell.x && seg.y === cell.y);
+    }
+
+    function obstacleAt(cell) {
+      return obstacles.some(o => cellsEqual(o, cell));
+    }
+
+    function anySnakeContains(cell) {
+      return snakeContains(snake1, cell) ||
+             snakeContains(snake2, cell) ||
+             snakeContains(allySnake, cell) ||
+             snakeContains(petSnake, cell) ||
+             snakeContains(decoySnake, cell) ||
+             enemySnakes.some(s => snakeContains(s, cell));
+    }
+
+    function spawnFood() {
+      while (true) {
+        const c = randCell();
+        if (!anySnakeContains(c) &&
+            !hunters.some(h => cellsEqual(h, c)) &&
+            !(boss && cellHitsBoss(c)) &&
+            !obstacleAt(c)) {
+          food = c;
+          return;
+        }
+      }
+    }
+
+    function spawnHunters() {
+      hunters = [];
+      const count = mode.hunters || 0;
+      for (let i = 0; i < count; i++) {
+        let cell;
+        do {
+          cell = randCell();
+        } while (anySnakeContains(cell) || obstacleAt(cell));
+        hunters.push(cell);
+      }
+    }
+
+    function spawnArenaObstacles() {
+      obstacles = [];
+      if (!mode.arena) return;
+      for (let x = 5; x < COLS - 5; x += 2) {
+        obstacles.push({ x, y: 8 });
+      }
+      for (let y = 12; y < ROWS - 4; y += 2) {
+        obstacles.push({ x: 10, y });
+      }
+    }
+
+    function spawnBoss() {
+      const width = 10;
+      const y = 3;
+      const x = Math.floor(COLS / 2) - Math.floor(width / 2);
+      boss = { x, y, width, dx: 1 };
+    }
+
+    function maybeSpawnBoss() {
+      if (nextBossIndex >= bossThresholds.length) return;
+      const threshold = bossThresholds[nextBossIndex];
+      if (score >= threshold && !boss) {
+        spawnBoss();
+        nextBossIndex++;
+      }
+    }
+
+    function resetBossState() {
+      boss = null;
+      nextBossIndex = 0;
+    }
+
+    function cellHitsBoss(cell) {
+      if (!boss) return false;
+      return cell.y === boss.y &&
+             cell.x >= boss.x &&
+             cell.x < boss.x + boss.width;
+    }
+
+    function resetGame() {
+      const startX = Math.floor(COLS / 3);
+      const startY = Math.floor(ROWS / 2);
+
+      snake1 = [
+        { x: startX,     y: startY },
+        { x: startX - 1, y: startY },
+        { x: startX - 2, y: startY }
+      ];
+      dir1 = { x: 1, y: 0 };
+      nextDir1 = { x: 1, y: 0 };
+
+      if (mode.coop) {
+        const sx2 = Math.floor(2 * COLS / 3);
+        const sy2 = Math.floor(ROWS / 2);
+        snake2 = [
+          { x: sx2,     y: sy2 },
+          { x: sx2 + 1, y: sy2 },
+          { x: sx2 + 2, y: sy2 }
+        ];
+        dir2 = { x: -1, y: 0 };
+        nextDir2 = { x: -1, y: 0 };
+      } else {
+        snake2 = [];
+        dir2 = { x: 0, y: 0 };
+        nextDir2 = { x: 0, y: 0 };
+      }
+
+      allySnake = mode.allyAI ? [randCell()] : [];
+      petSnake = [];
+      decoySnake = [];
+      enemySnakes = [];
+
+      score = 0;
+      scoreSpan.textContent = score;
+      timeAttackTicks = mode.timeLimit || 0;
+      infectionTicks = 0;
+      isInfected = false;
+      timeSurvivedTicks = 0;
+      totalFoodEaten += 0; // kept in save as we go
+      gameOver = false;
+      reviveUsedThisRun = false;
+
+      shockwaveCd = ghostCd = slowCd = teleportCd = magnetCd = freezeCd = 0;
+      ghostTicks = slowTimeTicks = magnetTicks = freezeTicks = 0;
+      hunterMoveCounter = 0;
+      passiveIncomeCounter = 0;
+
+      resetBossState();
+      spawnArenaObstacles();
+      spawnHunters();
+      spawnFood();
+      hideOverlay();
+      waveNumber = 1;
+      updateStatusBar();
+    }
+
+    function updateStatusBar() {
+      const parts = [];
+      parts.push('Mode: ' + mode.name);
+      if (mode.wrap) parts.push('Wrap');
+      if (mode.hunters > 0) parts.push('Hunters: ' + mode.hunters);
+      if (mode.allyAI) parts.push('Ally snake');
+      if (mode.coop) parts.push('Co-op');
+      if (mode.infection) parts.push('Infection on');
+      if (mode.timeLimit > 0) parts.push('Timer: ' + Math.max(0, Math.ceil(timeAttackTicks / 20)));
+      if (mode.waves) parts.push('Wave ' + waveNumber);
+      if (boss) parts.push('Boss active');
+      if (shockwaveCd > 0) parts.push('Shockwave CD:' + shockwaveCd);
+      if (ghostCd > 0 || ghostTicks > 0) parts.push('Ghost ' + (ghostTicks > 0 ? 'ON ' + ghostTicks : 'CD ' + ghostCd));
+      if (slowCd > 0 || slowTimeTicks > 0) parts.push('Slow ' + (slowTimeTicks > 0 ? 'ON ' + slowTimeTicks : 'CD ' + slowCd));
+      if (teleportCd > 0) parts.push('Teleport CD:' + teleportCd);
+      if (magnetCd > 0 || magnetTicks > 0) parts.push('Magnet ' + (magnetTicks > 0 ? 'ON ' + magnetTicks : 'CD ' + magnetCd));
+      if (freezeCd > 0 || freezeTicks > 0) parts.push('Freeze ' + (freezeTicks > 0 ? 'ON ' + freezeTicks : 'CD ' + freezeCd));
+      if (isInfected) parts.push('INFECTED ' + infectionTicks);
+      statusBar.textContent = parts.join(' | ');
+    }
+
+    function showOverlay(mainText, subText) {
+      overlayMain.textContent = mainText;
+      overlaySub.textContent = subText || '';
+      overlay.style.display = 'flex';
+    }
+
+    function hideOverlay() {
+      overlay.style.display = 'none';
+    }
+
+    function wrapOrWall(pos) {
+      let { x, y } = pos;
+      if (mode.wrap) {
+        if (x < 0) x = COLS - 1;
+        if (x >= COLS) x = 0;
+        if (y < 0) y = ROWS - 1;
+        if (y >= ROWS) y = 0;
+        return { x, y, hitWall: false };
+      } else {
+        if (x < 0 || x >= COLS || y < 0 || y >= ROWS) {
+          return { x, y, hitWall: true };
+        }
+        return { x, y, hitWall: false };
+      }
+    }
+
+    function moveSnakeEntity(snake, dir, isPlayer1) {
+      if (snake.length === 0) return { snake, ate: false, died: false };
+
+      const head = snake[0];
+      const next = { x: head.x + dir.x, y: head.y + dir.y };
+      const wrapped = wrapOrWall(next);
+
+      const ghostActive = isPlayer1 && ghostTicks > 0;
+      if (wrapped.hitWall && !ghostActive) {
+        return { snake, ate: false, died: true };
+      }
+      const newHead = { x: wrapped.x, y: wrapped.y };
+
+      if (!ghostActive) {
+        if (anySnakeContains(newHead)) return { snake, ate:false, died:true };
+        if (hunters.some(h => cellsEqual(h, newHead))) return { snake, ate:false, died:true };
+        if (cellHitsBoss(newHead)) return { snake, ate:false, died:true };
+        if (obstacleAt(newHead)) return { snake, ate:false, died:true };
+      }
+
+      snake.unshift(newHead);
+
+      let ate = false;
+      if (food && cellsEqual(newHead, food)) {
+        ate = true;
+        const scoreGain = hasUpgrade('bigfoodPlus') ? 2 : 1;
+        score += scoreGain;
+        scoreSpan.textContent = score;
+
+        totalFoodEaten += 1;
+        addXP(3); // XP per food
+        if (score % 5 === 0) {
+          snakebucks++;
+          updateSnakebucksUI();
+        }
+        saveProgress();
+
+        spawnFood();
+        maybeSpawnBoss();
+
+        if (mode.waves && score % 10 === 0) {
+          waveNumber++;
+          mode.hunters++;
+          spawnHunters();
+        }
+
+        checkQuestProgress();
+      } else {
+        snake.pop();
+      }
+      return { snake, ate, died:false };
+    }
+
+    function moveAlly() {
+      if (!mode.allyAI || allySnake.length === 0 || !food) return;
+      const head = allySnake[0];
+      let bestStep = null;
+      let bestDist = Infinity;
+      const dirs = [
+        { x: 1, y: 0 },
+        { x: -1, y: 0 },
+        { x: 0, y: 1 },
+        { x: 0, y: -1 }
+      ];
+      const smarter = hasUpgrade('allyPlus');
+      for (const d of dirs) {
+        const candidate = wrapOrWall({ x: head.x + d.x, y: head.y + d.y });
+        if (candidate.hitWall) continue;
+        const cell = { x: candidate.x, y: candidate.y };
+        if (anySnakeContains(cell) || obstacleAt(cell) || cellHitsBoss(cell)) continue;
+        const dx = cell.x - food.x;
+        const dy = cell.y - food.y;
+        const dist = smarter ? (Math.abs(dx) + Math.abs(dy)) : (dx*dx + dy*dy);
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestStep = cell;
+        }
+      }
+      if (!bestStep) return;
+      allySnake.unshift(bestStep);
+      if (!cellsEqual(bestStep, food)) {
+        allySnake.pop();
+      } else {
+        spawnFood();
+        maybeSpawnBoss();
+      }
+    }
+
+    function moveHunters() {
+      if (!hunters.length || freezeTicks > 0) return;
+      const targets = [];
+      if (snake1.length) targets.push(snake1[0]);
+      if (snake2.length) targets.push(snake2[0]);
+      if (allySnake.length) targets.push(allySnake[0]);
+      if (!targets.length) return;
+
+      hunters = hunters.map(h => {
+        let bestTarget = targets[0];
+        let bestDist = Math.abs(h.x - bestTarget.x) + Math.abs(h.y - bestTarget.y);
+        for (let i = 1; i < targets.length; i++) {
+          const t = targets[i];
+          const d = Math.abs(h.x - t.x) + Math.abs(h.y - t.y);
+          if (d < bestDist) {
+            bestDist = d;
+            bestTarget = t;
+          }
+        }
+
+        let bestStep = h;
+        bestDist = Infinity;
+        const dirs = [
+          { x: 1, y: 0 },
+          { x: -1, y: 0 },
+          { x: 0, y: 1 },
+          { x: 0, y: -1 }
+        ];
+        for (const d of dirs) {
+          const candidate = wrapOrWall({ x: h.x + d.x, y: h.y + d.y });
+          if (candidate.hitWall) continue;
+          const cell = { x: candidate.x, y: candidate.y };
+          if (obstacleAt(cell) || cellHitsBoss(cell)) continue;
+          const dx = cell.x - bestTarget.x;
+          const dy = cell.y - bestTarget.y;
+          const dist = Math.abs(dx) + Math.abs(dy);
+          if (dist < bestDist) {
+            bestDist = dist;
+            bestStep = cell;
+          }
+        }
+        return bestStep;
+      });
+    }
+
+    function moveBoss() {
+      if (!boss) return;
+      boss.x += boss.dx;
+      if (boss.x < 1 || boss.x + boss.width > COLS - 1) {
+        boss.dx *= -1;
+        boss.x += boss.dx;
+      }
+    }
+
+    function applyShockwave() {
+      if (!hunters.length || shockwaveCd > 0 || !snake1.length) return;
+      const head = snake1[0];
+      hunters = hunters.map(h => {
+        let dx = h.x - head.x;
+        let dy = h.y - head.y;
+        const step = { x: 0, y: 0 };
+        if (dx > 0) step.x = 1;
+        if (dx < 0) step.x = -1;
+        if (dy > 0) step.y = 1;
+        if (dy < 0) step.y = -1;
+        const candidate = wrapOrWall({ x: h.x + step.x, y: h.y + step.y });
+        if (candidate.hitWall || cellHitsBoss(candidate) || obstacleAt(candidate)) return h;
+        return { x: candidate.x, y: candidate.y };
+      });
+      const baseCd = 25;
+      const effectiveCd = hasUpgrade('shockPlus') ? Math.max(10, baseCd - 10) : baseCd;
+      shockwaveCd = effectiveCd;
+    }
+
+    function activateGhost() {
+      if (ghostCd === 0 && ghostTicks === 0) {
+        const baseDuration = 30;
+        ghostTicks = hasUpgrade('ghostPlus') ? baseDuration + 20 : baseDuration;
+        ghostCd = 80;
+      }
+    }
+
+    function activateSlowTime() {
+      if (slowCd === 0 && slowTimeTicks === 0) {
+        const baseDuration = 40;
+        slowTimeTicks = hasUpgrade('slowPlus') ? baseDuration + 25 : baseDuration;
+        slowCd = 120;
+      }
+    }
+
+    function activateTeleport() {
+      if (teleportCd > 0 || !snake1.length) return;
+      const head = snake1[0];
+      let newCell = { x: head.x, y: head.y };
+      for (let i = 0; i < 5; i++) {
+        newCell = wrapOrWall({ x: newCell.x + dir1.x, y: newCell.y + dir1.y });
+      }
+      if (!obstacleAt(newCell) && !cellHitsBoss(newCell)) {
+        snake1[0] = { x: newCell.x, y: newCell.y };
+      }
+      teleportCd = 40;
+    }
+
+    function activateMagnet() {
+      if (magnetCd > 0 || magnetTicks > 0) return;
+      magnetTicks = 40;
+      magnetCd = 80;
+    }
+
+    function activateFreeze() {
+      if (freezeCd > 0 || freezeTicks > 0) return;
+      freezeTicks = 30;
+      freezeCd = 100;
+    }
+
+    function applyMagnetEffect() {
+      if (!food || !snake1.length || magnetTicks <= 0) return;
+      const head = snake1[0];
+      const dx = food.x - head.x;
+      const dy = food.y - head.y;
+      if (Math.abs(dx) + Math.abs(dy) <= 6) {
+        const step = { x: 0, y: 0 };
+        if (dx < 0) step.x = -1;
+        if (dx > 0) step.x = 1;
+        if (dy < 0) step.y = -1;
+        if (dy > 0) step.y = 1;
+        const candidate = wrapOrWall({ x: food.x - step.x, y: food.y - step.y });
+        if (!obstacleAt(candidate) && !anySnakeContains(candidate)) {
+          food = { x: candidate.x, y: candidate.y };
+        }
+      }
+    }
+
+    function maybeInfect() {
+      if (!mode.infection || !snake1.length) return;
+      if (isInfected) return;
+      if (hunters.some(h => cellsEqual(h, snake1[0]))) {
+        isInfected = true;
+        infectionTicks = 80;
+      }
+    }
+
+    function handleInfectionTick() {
+      if (!mode.infection || !isInfected) return;
+      infectionTicks--;
+      if (infectionTicks <= 0) {
+        gameOver = true;
+      }
+    }
+
+    function drawGrid(skin) {
+      ctx.fillStyle = skin.bg;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.strokeStyle = skin.grid;
+      ctx.lineWidth = 1;
+      for (let x = 0; x <= COLS; x++) {
+        ctx.beginPath();
+        ctx.moveTo(x * CELL_SIZE + 0.5, 0);
+        ctx.lineTo(x * CELL_SIZE + 0.5, canvas.height);
+        ctx.stroke();
+      }
+      for (let y = 0; y <= ROWS; y++) {
+        ctx.beginPath();
+        ctx.moveTo(0, y * CELL_SIZE + 0.5);
+        ctx.lineTo(canvas.width, y * CELL_SIZE + 0.5);
+        ctx.stroke();
+      }
+    }
+
+    function drawCell(cell, color) {
+      ctx.fillStyle = color;
+      ctx.fillRect(
+        cell.x * CELL_SIZE + 2,
+        cell.y * CELL_SIZE + 2,
+        CELL_SIZE - 4,
+        CELL_SIZE - 4
+      );
+    }
+
+    function drawBoss() {
+      if (!boss) return;
+      for (let i = 0; i < boss.width; i++) {
+        const cell = { x: boss.x + i, y: boss.y };
+        drawCell(cell, '#ff8800');
+      }
+    }
+
+    function drawObstacles() {
+      obstacles.forEach(o => drawCell(o, '#555555'));
+    }
+
+    function draw() {
+      const skin = SKINS[currentSkinId] || SKINS.classic;
+      drawGrid(skin);
+
+      if (food) drawCell(food, '#ff3333');
+      drawBoss();
+      drawObstacles();
+      hunters.forEach(h => drawCell(h, '#ff00cc'));
+      allySnake.forEach((seg, i) => drawCell(seg, i === 0 ? '#aaffaa' : '#66bb66'));
+      petSnake.forEach((seg, i) => drawCell(seg, i === 0 ? '#ffaa33' : '#cc8833'));
+      decoySnake.forEach(seg => drawCell(seg, '#888888'));
+
+      snake1.forEach((seg, i) => {
+        let color = i === 0 ? skin.head : skin.body;
+        if (ghostTicks > 0 && i === 0) color = '#ffffff';
+        if (isInfected && i === 0) color = '#aa00ff';
+        drawCell(seg, color);
+      });
+
+      snake2.forEach((seg, i) => drawCell(seg, i === 0 ? '#00e0ff' : '#0080ff'));
+
+      enemySnakes.forEach(es => {
+        es.forEach((seg, i) => drawCell(seg, i === 0 ? '#ffbb00' : '#cc9900'));
+      });
+    }
+
+    function tryRevive() {
+      if (!hasUpgrade('reviveToken') || reviveUsedThisRun || !snake1.length) return false;
+      reviveUsedThisRun = true;
+      gameOver = false;
+      showOverlay('REVIVE!', 'You used a revive token. Continue!');
+      setTimeout(() => hideOverlay(), 1000);
+      return true;
+    }
+
+    function checkQuestProgress() {
+      QUESTS.forEach(q => {
+        if (questState[q.id] && questState[q.id].done) return;
+        let completed = false;
+        if (q.type === 'score' && score >= q.target) completed = true;
+        if (q.type === 'foodTotal' && totalFoodEaten >= q.target) completed = true;
+        if (q.type === 'time' && (timeSurvivedTicks / 20) >= q.target) completed = true;
+        if (q.type === 'wave' && mode.waves && waveNumber >= q.target) completed = true;
+
+        if (completed) {
+          questState[q.id] = { done: true };
+          snakebucks += q.rewardSB;
+          addXP(q.rewardXP);
+          updateSnakebucksUI();
+          shopMessage.textContent = 'Quest completed: ' + q.desc + ' (+SB, +XP)';
+          saveProgress();
+        }
+      });
+      renderQuestList();
+    }
+
+    function renderQuestList() {
+      questListEl.innerHTML = '';
+      QUESTS.forEach(q => {
+        const li = document.createElement('li');
+        const state = questState[q.id] && questState[q.id].done;
+        let extra = '';
+        if (!state) {
+          if (q.type === 'score') extra = ` (goal: ${q.target}, current: ${score})`;
+          if (q.type === 'foodTotal') extra = ` (goal: ${q.target}, total: ${totalFoodEaten})`;
+          if (q.type === 'time') extra = ` (goal: ${q.target}s)`;
+          if (q.type === 'wave') extra = ` (goal: Wave ${q.target})`;
+          li.className = 'quest-progress';
+        } else {
+          li.className = 'quest-done';
+          extra = ' (completed)';
+        }
+        li.textContent = `${q.desc} · Reward: ${q.rewardSB} SB, ${q.rewardXP} XP${extra}`;
+        questListEl.appendChild(li);
+      });
+    }
+
+    function update() {
+      if (!running || gameOver) return;
+
+      passiveIncomeCounter++;
+      if (hasUpgrade('passivePlus') && passiveIncomeCounter >= 120) {
+        passiveIncomeCounter = 0;
+        snakebucks++;
+        updateSnakebucksUI();
+        saveProgress();
+      }
+
+      if (shockwaveCd > 0) shockwaveCd--;
+      if (ghostCd > 0) ghostCd--;
+      if (slowCd > 0) slowCd--;
+      if (teleportCd > 0) teleportCd--;
+      if (magnetCd > 0) magnetCd--;
+      if (freezeCd > 0) freezeCd--;
+      if (ghostTicks > 0) ghostTicks--;
+      if (slowTimeTicks > 0) slowTimeTicks--;
+      if (magnetTicks > 0) magnetTicks--;
+      if (freezeTicks > 0) freezeTicks--;
+
+      if (mode.timeLimit > 0) {
+        timeAttackTicks--;
+        if (timeAttackTicks <= 0) {
+          gameOver = true;
+        }
+      }
+
+      timeSurvivedTicks++;
+      handleInfectionTick();
+
+      dir1 = nextDir1;
+      const res1 = moveSnakeEntity(snake1, dir1, true);
+      snake1 = res1.snake;
+      let died = res1.died;
+
+      if (mode.coop && snake2.length > 0) {
+        dir2 = nextDir2;
+        const res2 = moveSnakeEntity(snake2, dir2, false);
+        snake2 = res2.snake;
+        if (res2.died) died = true;
+      }
+
+      if (mode.allyAI) moveAlly();
+      if (boss) moveBoss();
+
+      hunterMoveCounter++;
+      if (mode.hunters > 0 && hunterMoveCounter >= HUNTER_MOVE_EVERY) {
+        hunterMoveCounter = 0;
+        moveHunters();
+      }
+
+      const allSnakes = [...snake1, ...snake2, ...allySnake, ...petSnake];
+      for (const h of hunters) {
+        if (allSnakes.some(seg => cellsEqual(seg, h))) {
+          if (!tryRevive()) died = true;
+          break;
+        }
+      }
+
+      maybeInfect();
+      applyMagnetEffect();
+      checkQuestProgress();
+
+      if (gameOver || died) {
+        gameOver = true;
+        if (score > best) {
+          best = score;
+          bestSpan.textContent = best;
+        }
+        saveProgress();
+        showOverlay('GAME OVER', 'Score: ' + score + ' · Press Space or Start to play again');
+      }
+
+      updateStatusBar();
+    }
+
+    function gameLoop() {
+      update();
+      draw();
+      const delay = slowTimeTicks > 0 ? baseDelay * 1.6 : baseDelay;
+      loopId = setTimeout(gameLoop, delay);
+    }
+
+    function startGame() {
+      if (loopId) clearTimeout(loopId);
+      baseDelay = baseTick / mode.speedMult;
+      resetGame();
+      running = true;
+      gameLoop();
+    }
+
+    // ====== INPUT HANDLERS ======
+    window.addEventListener('keydown', (e) => {
+      const key = e.key.toLowerCase();
+
+      if (['arrowup','arrowdown','arrowleft','arrowright',' '].includes(key)) {
+        e.preventDefault();
+      }
+
+      if (key === ' ') {
+        if (!running) {
+          startGame();
+        }
+        return;
+      }
+
+      if (key === 'e') {
+        applyShockwave();
+        updateStatusBar();
+        return;
+      }
+      if (key === 'q') {
+        activateGhost();
+        updateStatusBar();
+        return;
+      }
+      if (key === 'r') {
+        activateSlowTime();
+        updateStatusBar();
+        return;
+      }
+      if (key === 'f') {
+        activateTeleport();
+        updateStatusBar();
+        return;
+      }
+      if (key === 'c') {
+        activateMagnet();
+        updateStatusBar();
+        return;
+      }
+      if (key === 'z') {
+        activateFreeze();
+        updateStatusBar();
+        return;
+      }
+
+      let newDir1 = null;
+      if (key === 'w') newDir1 = { x: 0, y: -1 };
+      if (key === 's') newDir1 = { x: 0, y: 1 };
+      if (key === 'a') newDir1 = { x: -1, y: 0 };
+      if (key === 'd') newDir1 = { x: 1, y: 0 };
+      if (newDir1) {
+        if (!(newDir1.x === -dir1.x && newDir1.y === -dir1.y)) {
+          nextDir1 = newDir1;
+        }
+      }
+
+      if (mode.coop) {
+        let newDir2 = null;
+        if (key === 'arrowup') newDir2 = { x: 0, y: -1 };
+        if (key === 'arrowdown') newDir2 = { x: 0, y: 1 };
+        if (key === 'arrowleft') newDir2 = { x: -1, y: 0 };
+        if (key === 'arrowright') newDir2 = { x: 1, y: 0 };
+        if (newDir2) {
+          if (!(newDir2.x === -dir2.x && newDir2.y === -dir2.y)) {
+            nextDir2 = newDir2;
+          }
+        }
+      }
+    });
+
+    startBtn.addEventListener('click', () => {
+      startGame();
+    });
+
+    skinSelect.addEventListener('change', (e) => {
+      currentSkinId = e.target.value;
+      menuSkinSelect.value = currentSkinId;
+      draw();
+    });
+
+    modeSelect.addEventListener('change', (e) => {
+      currentModeId = e.target.value;
+      mode = MODES[currentModeId] || MODES.classic;
+      menuModeSelect.value = currentModeId;
+      updateStatusBar();
+      showOverlay('Mode: ' + mode.name, 'Press Space or Start to begin');
+      draw();
+    });
+
+    menuStartBtn.addEventListener('click', () => {
+      currentSkinId = menuSkinSelect.value;
+      skinSelect.value = currentSkinId;
+      currentModeId = menuModeSelect.value;
+      mode = MODES[currentModeId] || MODES.classic;
+      modeSelect.value = currentModeId;
+      mainMenu.style.display = 'none';
+      updateStatusBar();
+      startGame();
+    });
+
+    shopButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const type = btn.getAttribute('data-upgrade');
+        shopMessage.textContent = '';
+        let cost = 0;
+        let key;
+        if (type === 'ghost')  { cost = 15; key = 'ghostPlus'; }
+        else if (type === 'slow')   { cost = 15; key = 'slowPlus'; }
+        else if (type === 'shock')  { cost = 20; key = 'shockPlus'; }
+        else if (type === 'passive'){ cost = 25; key = 'passivePlus'; }
+        else if (type === 'ally')   { cost = 20; key = 'allyPlus'; }
+        else if (type === 'bigfood'){ cost = 15; key = 'bigfoodPlus'; }
+        else if (type === 'revive') { cost = 40; key = 'reviveToken'; }
+        if (!key) return;
+        if (hasUpgrade(key)) {
+          shopMessage.textContent = 'You already own or unlocked this upgrade.';
+          return;
+        }
+        if (snakebucks < cost) {
+          shopMessage.textContent = 'Not enough Snakebucks!';
+          return;
+        }
+        snakebucks -= cost;
+        upgrades[key] = true;
+        updateSnakebucksUI();
+        updateShopButtonStates();
+        saveProgress();
+        shopMessage.textContent = 'Upgrade purchased!';
+      });
+    });
+
+    // ====== INITIAL RENDER ======
+    updateSnakebucksUI();
+    updateLevelUI();
+    renderQuestList();
+    updateShopButtonStates();
+    mode = MODES[currentModeId];
+    resetGame();
+    draw();
+    showOverlay('Snake Eater – Ready', 'Use the main menu to choose mode, skin, quests and upgrades');
+  </script>
+</body>
+</html>
